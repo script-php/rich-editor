@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rich Text Editor with Live Preview</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .toolbar {
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .toolbar button {
+            padding: 5px 10px;
+            cursor: pointer;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .toolbar button:hover {
+            background-color: #e9e9e9;
+        }
+        .toolbar button.active {
+            background-color: #ddd;
+        }
+        .editor {
+            border: 1px solid #ddd;
+            min-height: 300px;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .barcode {
+            background-color: #ffffcc;
+            padding: 2px 5px;
+            border-radius: 3px;
+            border: 1px dashed #999;
+        }
+        .heading1 {
+            font-size: 2em;
+            font-weight: bold;
+            display: inline;
+        }
+        .heading2 {
+            font-size: 1.75em;
+            font-weight: bold;
+            display: inline;
+        }
+        .heading3 {
+            font-size: 1.5em;
+            font-weight: bold;
+            display: inline;
+        }
+        .heading4 {
+            font-size: 1.25em;
+            font-weight: bold;
+            display: inline;
+        }
+        .heading5 {
+            font-size: 1.1em;
+            font-weight: bold;
+            display: inline;
+        }
+        .heading6 {
+            font-size: 1em;
+            font-weight: bold;
+            display: inline;
+        }
+        .centered {
+            text-align: center;
+            display: block;
+        }
+        .btn-submit {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-submit:hover {
+            background-color: #45a049;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .input-group textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            font-family: monospace;
+        }
+        .instructions {
+            background-color: #f8f8f8;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4CAF50;
+        }
+        .debug-info {
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        .preview-container {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 20px;
+            background-color: #f9f9f9;
+        }
+        .preview-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        .preview-content {
+            min-height: 200px;
+        }
+        .editor-preview-layout {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .editor-container, .preview-container {
+            flex: 1;
+        }
+        .editor-container h3, .preview-container h3 {
+            margin-top: 0;
+        }
+        @media (max-width: 768px) {
+            .editor-preview-layout {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Rich Text Editor with Live Preview</h1>
+    
+    <div class="instructions">
+        <p><strong>How to use:</strong></p>
+        <p>1. Paste formatted HTML from your database into the HTML Input field</p>
+        <p>2. Click "Load Content" to load it into the editor</p>
+        <p>3. Edit the content using the formatting tools</p>
+        <p>4. See the live preview of the formatted output</p>
+        <p>5. Click "Get Formatted Text" to get the updated HTML</p>
+    </div>
+    
+    <div class="input-group">
+        <label for="html-input">Preloaded HTML from Database:</label>
+        <textarea id="html-input" placeholder="Paste your HTML here..."><p>This is some <b>bold text</b> and <i>italic text</i> from the database.</p><p>Here is a <barcode>12345678</barcode> barcode.</p><h1>This is an H1 heading</h1><p>This paragraph contains <h3>an H3 heading</h3> in the middle of it.</p></textarea>
+        <button id="btn-load" style="margin-top: 10px; padding: 5px 10px;">Load Content</button>
+    </div>
+    
+    <div class="toolbar">
+        <button id="btn-bold" title="Bold"><b>B</b></button>
+        <button id="btn-italic" title="Italic"><i>I</i></button>
+        <button id="btn-underline" title="Underline"><u>U</u></button>
+        <button id="btn-center" title="Center">Center</button>
+        <button id="btn-h1" title="Heading 1">H1</button>
+        <button id="btn-h2" title="Heading 2">H2</button>
+        <button id="btn-h3" title="Heading 3">H3</button>
+        <button id="btn-h4" title="Heading 4">H4</button>
+        <button id="btn-h5" title="Heading 5">H5</button>
+        <button id="btn-h6" title="Heading 6">H6</button>
+        <button id="btn-barcode" title="Barcode">Barcode</button>
+        <button id="btn-remove-format" title="Remove Format">Remove Format</button>
+    </div>
+    
+    <div class="editor-preview-layout">
+        <div class="editor-container">
+            <h3>Editor</h3>
+            <div id="editor" class="editor" contenteditable="true">
+                Click "Load Content" to load formatted text from the input above.
+            </div>
+        </div>
+        
+        <div class="preview-container">
+            <h3>Live Preview</h3>
+            <div id="live-preview" class="preview-content">
+                Preview will appear here when you edit text in the editor.
+            </div>
+        </div>
+    </div>
+    
+    <button id="btn-submit" class="btn-submit">Get Formatted Text</button>
+    
+    <div id="output-container" style="margin-top: 20px;">
+        <h3>Output HTML:</h3>
+        <div id="output" style="white-space: pre-wrap; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; max-height: 300px; overflow: auto;"></div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const editor = document.getElementById('editor');
+            const outputDiv = document.getElementById('output');
+            const htmlInput = document.getElementById('html-input');
+            const loadButton = document.getElementById('btn-load');
+            const livePreview = document.getElementById('live-preview');
+            
+            // Initialize with empty output
+            outputDiv.textContent = '';
+            
+            const buttons = {
+                bold: document.getElementById('btn-bold'),
+                italic: document.getElementById('btn-italic'),
+                underline: document.getElementById('btn-underline'),
+                center: document.getElementById('btn-center'),
+                h1: document.getElementById('btn-h1'),
+                h2: document.getElementById('btn-h2'),
+                h3: document.getElementById('btn-h3'),
+                h4: document.getElementById('btn-h4'),
+                h5: document.getElementById('btn-h5'),
+                h6: document.getElementById('btn-h6'),
+                barcode: document.getElementById('btn-barcode'),
+                removeFormat: document.getElementById('btn-remove-format'),
+                submit: document.getElementById('btn-submit')
+            };
+            
+            // Function to update the preview
+            function updateLivePreview() {
+                let html = editor.innerHTML;
+                // Process HTML for output (convert internal formats to actual HTML)
+                html = postprocessHtml(html);
+                // Update live preview
+                livePreview.innerHTML = html;
+            }
+            
+            // Set up event listeners for the editor to update the preview
+            editor.addEventListener('input', updateLivePreview);
+            editor.addEventListener('blur', updateLivePreview);
+            editor.addEventListener('keyup', updateLivePreview);
+            editor.addEventListener('mouseup', updateLivePreview);
+            
+            // Load preformatted content
+            loadButton.addEventListener('click', () => {
+                const html = htmlInput.value;
+                // Process HTML for compatibility with our editor
+                const processedHtml = preprocessHtml(html);
+                editor.innerHTML = processedHtml;
+                // Update preview immediately after loading
+                updateLivePreview();
+            });
+            
+            // Basic formatting commands
+            buttons.bold.addEventListener('click', () => {
+                if (hasSelection()) {
+                    document.execCommand('bold');
+                    updateLivePreview();
+                } else {
+                    alert('Please select some text first');
+                }
+            });
+            
+            buttons.italic.addEventListener('click', () => {
+                if (hasSelection()) {
+                    document.execCommand('italic');
+                    updateLivePreview();
+                } else {
+                    alert('Please select some text first');
+                }
+            });
+            
+            buttons.underline.addEventListener('click', () => {
+                if (hasSelection()) {
+                    document.execCommand('underline');
+                    updateLivePreview();
+                } else {
+                    alert('Please select some text first');
+                }
+            });
+            
+            buttons.center.addEventListener('click', () => {
+                if (hasSelection()) {
+                    // Custom center handling to prevent nesting issues
+                    applyCenterToSelection();
+                    updateLivePreview();
+                } else {
+                    alert('Please select some text first');
+                }
+            });
+            
+            // Heading formatting using spans instead of block-level elements
+            buttons.h1.addEventListener('click', () => {
+                if (hasSelection()) {
+                    applyHeadingToSelection('heading1');
+                    updateLivePreview();
+                } else {
+                    alert('Please select some text first');
+                }
+            });
+            
+            buttons.h2.addEventListener('click', () => {
+                if (hasSelection()) {
+                    applyHeadingToSelection('heading2');
+                    updateLivePreview();
+                } else {
+                    alert('Please select some text first');
+                }
+            });
+            
+            buttons.h3.addEventListener('click', () => {
+                if (hasSelection()) {
+                    applyHeadingToSelection('heading3');
+                    updateLivePreview();
+                } else {
+                    alert('Please select some text first');
+                }
+            });
+            
+            buttons.h4.addEventListener('click', () => {
+                if (hasSelection()) {
+                    applyHeadingToSelection('heading4');
+                    updateLivePreview();
+                } else {
+                    alert('Please select some text first');
+                }
+            });
+            
+            buttons.h5.addEventListener('click', () => {
+                if (hasSelection()) {
+                    applyHeadingToSelection('heading5');
+                    updateLivePreview();
+                } else {
+                    alert('Please select some text first');
+                }
+            });
+            
+            buttons.h6.addEventListener('click', () => {
+                if (hasSelection()) {
+                    applyHeadingToSelection('heading6');
+                    updateLivePreview();
+                } else {
+                    alert('Please select some text first');
+                }
+            });
+            
+            // Barcode formatting
+            buttons.barcode.addEventListener('click', () => {
+                if (hasSelection()) {
+                    toggleBarcode();
+                    updateLivePreview();
+                } else {
+                    alert('Please select some text first');
+                }
+            });
+            
+            // Remove format
+            buttons.removeFormat.addEventListener('click', () => {
+                if (hasSelection()) {
+                    removeCustomFormatting();
+                    document.execCommand('removeFormat');
+                    updateLivePreview();
+                } else {
+                    alert('Please select some text first');
+                }
+            });
+            
+            // Submit button - get formatted HTML
+            buttons.submit.addEventListener('click', () => {
+                let html = editor.innerHTML;
+                
+                // Clean up the HTML for output
+                html = postprocessHtml(html);
+                
+                outputDiv.textContent = html;
+                console.log(html); // You can send this to your file
+            });
+            
+            // Helper functions
+            function hasSelection() {
+                const selection = window.getSelection();
+                return selection && selection.toString().length > 0;
+            }
+            
+            function cleanupEmptyTags(html) {
+                // Remove empty tags with no attributes
+                let cleaned = html;
+                
+                // Remove specific empty tags that might be left after formatting
+                const emptyTagsPattern = /<(b|i|u|strong|em|span|div|h1|h2|h3|h4|h5|h6)>\s*<\/\1>/gi;
+                
+                // First pass - do a direct replacement of simple empty tags
+                cleaned = cleaned.replace(emptyTagsPattern, '');
+                
+                // Second pass - handle empty tags with attributes (more complex)
+                // This regex matches tags with attributes but no content
+                const emptyTagsWithAttrsPattern = /<(b|i|u|strong|em|span|div)([^>]*)>\s*<\/\1>/gi;
+                cleaned = cleaned.replace(emptyTagsWithAttrsPattern, function(match, tagName, attributes) {
+                    // If attributes contain class="centered" or similar important attributes, 
+                    // we may want to keep these tags in certain cases
+                    if (attributes.includes('class="centered"') || 
+                        attributes.includes('class="barcode"') ||
+                        /class="heading\d"/.test(attributes)) {
+                        // Keep these tags even if empty as they might be important for layout
+                        return match;
+                    }
+                    // Otherwise remove empty tags with attributes
+                    return '';
+                });
+                
+                // Handle nested empty tags - repeat the process a few times to catch nested empties
+                for (let i = 0; i < 3; i++) {
+                    cleaned = cleaned.replace(emptyTagsPattern, '');
+                    cleaned = cleaned.replace(emptyTagsWithAttrsPattern, function(match, tagName, attributes) {
+                        if (attributes.includes('class="centered"') || 
+                            attributes.includes('class="barcode"') ||
+                            /class="heading\d"/.test(attributes)) {
+                            return match;
+                        }
+                        return '';
+                    });
+                }
+                
+                // Remove extra whitespace
+                cleaned = cleaned.replace(/\s+/g, ' ').trim();
+                
+                return cleaned;
+            }
+            
+            function applyHeadingToSelection(headingClass) {
+                const selection = window.getSelection();
+                if (!selection.rangeCount) return;
+                
+                let range = selection.getRangeAt(0);
+                const selectedText = range.toString();
+                
+                if (!selectedText) return;
+                
+                // Check if selection is already formatted with any heading
+                let currentNode = range.commonAncestorContainer;
+                
+                // If text node, get its parent element
+                if (currentNode.nodeType === 3) {
+                    currentNode = currentNode.parentNode;
+                }
+                
+                // Check if the selection already has heading formatting
+                const headingClasses = ['heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6'];
+                
+                // If it has the same heading class, remove it (toggle off)
+                if (currentNode.classList && currentNode.classList.contains(headingClass)) {
+                    const textNode = document.createTextNode(currentNode.textContent);
+                    currentNode.parentNode.replaceChild(textNode, currentNode);
+                    
+                    // Select the text again
+                    const newRange = document.createRange();
+                    newRange.setStart(textNode, 0);
+                    newRange.setEnd(textNode, textNode.length);
+                    selection.removeAllRanges();
+                    selection.addRange(newRange);
+                    return;
+                }
+                
+                // Check if it has a different heading class
+                let hasOtherHeading = false;
+                if (currentNode.classList) {
+                    for (const cls of headingClasses) {
+                        if (currentNode.classList.contains(cls)) {
+                            hasOtherHeading = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (hasOtherHeading) {
+                    // Remove the existing heading formatting but keep the text
+                    const textNode = document.createTextNode(currentNode.textContent);
+                    currentNode.parentNode.replaceChild(textNode, currentNode);
+                    
+                    // Create a new range around this text node
+                    range = document.createRange();
+                    range.setStart(textNode, 0);
+                    range.setEnd(textNode, textNode.length);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                }
+                
+                // Now apply the new heading
+                // Get the current selection and range again since it might have changed
+                const updatedSelection = window.getSelection();
+                const updatedRange = updatedSelection.getRangeAt(0);
+                
+                // Extract contents to ensure we're working with clean content
+                const tempFragment = updatedRange.extractContents();
+                
+                // Create a temporary div to hold the extracted content
+                const tempDiv = document.createElement('div');
+                tempDiv.appendChild(tempFragment);
+                
+                // Get the pure text content, stripping any remaining formatting
+                const pureText = tempDiv.textContent;
+                
+                // Create the heading span with the pure text
+                const span = document.createElement('span');
+                span.className = headingClass;
+                span.textContent = pureText;
+                
+                // Insert the new heading element
+                updatedRange.insertNode(span);
+                
+                // Select the newly inserted element
+                updatedSelection.removeAllRanges();
+                const newRange = document.createRange();
+                newRange.selectNodeContents(span);
+                updatedSelection.addRange(newRange);
+            }
+            
+            function applyCenterToSelection() {
+                const selection = window.getSelection();
+                if (!selection.rangeCount) return;
+                
+                const range = selection.getRangeAt(0);
+                
+                // Check if selection already contains centered content
+                let currentNode = range.commonAncestorContainer;
+                while (currentNode && currentNode !== editor) {
+                    if (currentNode.nodeType === 1 && 
+                        (currentNode.classList.contains('centered') || 
+                         getComputedStyle(currentNode).textAlign === 'center')) {
+                        // Already centered, remove centering
+                        if (currentNode.classList.contains('centered')) {
+                            // If using our custom centered class
+                            const parent = currentNode.parentNode;
+                            while (currentNode.firstChild) {
+                                parent.insertBefore(currentNode.firstChild, currentNode);
+                            }
+                            parent.removeChild(currentNode);
+                        } else {
+                            // If using native text-align
+                            currentNode.style.textAlign = '';
+                        }
+                        return;
+                    }
+                    currentNode = currentNode.parentNode;
+                }
+                
+                // Extract the content to prevent nesting issues
+                const fragment = range.extractContents();
+                
+                // Create a centered container
+                const centeredDiv = document.createElement('div');
+                centeredDiv.className = 'centered';
+                
+                // Add the content to the centered container
+                centeredDiv.appendChild(fragment);
+                
+                // Insert the centered container
+                range.insertNode(centeredDiv);
+                
+                // Select the centered content
+                selection.removeAllRanges();
+                const newRange = document.createRange();
+                newRange.selectNodeContents(centeredDiv);
+                selection.addRange(newRange);
+            }
+            
+            function toggleBarcode() {
+                const selection = window.getSelection();
+                if (!selection.rangeCount) return;
+                
+                const range = selection.getRangeAt(0);
+                const selectedText = range.toString();
+                
+                if (!selectedText) return;
+                
+                // Check if selection is already inside a barcode span
+                const parentElement = range.commonAncestorContainer.parentElement;
+                if (parentElement && parentElement.classList.contains('barcode')) {
+                    // Remove barcode formatting
+                    const textNode = document.createTextNode(parentElement.textContent);
+                    parentElement.parentNode.replaceChild(textNode, parentElement);
+                    
+                    // Select the text again
+                    const newRange = document.createRange();
+                    newRange.setStart(textNode, 0);
+                    newRange.setEnd(textNode, textNode.length);
+                    selection.removeAllRanges();
+                    selection.addRange(newRange);
+                } else {
+                    // Extract content to prevent nesting
+                    const tempFragment = range.extractContents();
+                    
+                    // Get the pure text
+                    const tempDiv = document.createElement('div');
+                    tempDiv.appendChild(tempFragment);
+                    const pureText = tempDiv.textContent;
+                    
+                    // Add barcode formatting
+                    const span = document.createElement('span');
+                    span.className = 'barcode';
+                    span.setAttribute('data-barcode', true);
+                    span.textContent = pureText;
+                    
+                    range.insertNode(span);
+                    
+                    // Select the span
+                    selection.removeAllRanges();
+                    const newRange = document.createRange();
+                    newRange.selectNodeContents(span);
+                    selection.addRange(newRange);
+                }
+            }
+            
+            function removeCustomFormatting() {
+                const selection = window.getSelection();
+                if (!selection.rangeCount) return;
+                
+                const range = selection.getRangeAt(0);
+                
+                // Extract the content
+                const fragment = range.extractContents();
+                
+                // Create a temporary div to hold the content
+                const tempDiv = document.createElement('div');
+                tempDiv.appendChild(fragment);
+                
+                // Remove barcode and heading classes from all elements
+                const formattedElements = tempDiv.querySelectorAll('.barcode, .heading1, .heading2, .heading3, .heading4, .heading5, .heading6, .centered');
+                formattedElements.forEach(element => {
+                    const textNode = document.createTextNode(element.textContent);
+                    element.parentNode.replaceChild(textNode, element);
+                });
+                
+                // Clean up any empty tags in the tempDiv
+                tempDiv.innerHTML = cleanupEmptyTags(tempDiv.innerHTML);
+                
+                // Insert the cleaned content back
+                while (tempDiv.firstChild) {
+                    range.insertNode(tempDiv.lastChild);
+                }
+            }
+            
+            // Process HTML to make it compatible with our editor
+            function preprocessHtml(html) {
+                // First apply cleanup to remove any pre-existing empty tags
+                let processedHtml = cleanupEmptyTags(html);
+                
+                // Convert <barcode> tags to spans with barcode class
+                processedHtml = processedHtml.replace(/<barcode>(.*?)<\/barcode>/gi, '<span class="barcode" data-barcode="true">$1</span>');
+                
+                // Convert heading tags to spans with heading classes
+                processedHtml = processedHtml.replace(/<h1>(.*?)<\/h1>/gi, '<span class="heading1">$1</span>');
+                processedHtml = processedHtml.replace(/<h2>(.*?)<\/h2>/gi, '<span class="heading2">$1</span>');
+                processedHtml = processedHtml.replace(/<h3>(.*?)<\/h3>/gi, '<span class="heading3">$1</span>');
+                processedHtml = processedHtml.replace(/<h4>(.*?)<\/h4>/gi, '<span class="heading4">$1</span>');
+                processedHtml = processedHtml.replace(/<h5>(.*?)<\/h5>/gi, '<span class="heading5">$1</span>');
+                processedHtml = processedHtml.replace(/<h6>(.*?)<\/h6>/gi, '<span class="heading6">$1</span>');
+                
+                // Convert center-aligned text
+                processedHtml = processedHtml.replace(/<div.*?style="text-align:\s*center.*?">(.*?)<\/div>/gi, '<div class="centered">$1</div>');
+                processedHtml = processedHtml.replace(/<p.*?style="text-align:\s*center.*?">(.*?)<\/p>/gi, '<div class="centered">$1</div>');
+                processedHtml = processedHtml.replace(/<center>(.*?)<\/center>/gi, '<div class="centered">$1</div>');
+                
+                return processedHtml;
+            }
+            
+            // Process HTML for output
+            function postprocessHtml(html) {
+                // First run cleanup to remove any empty tags
+                let processedHtml = cleanupEmptyTags(html);
+                
+                // Replace spans with barcode class with actual barcode tags
+                processedHtml = processedHtml.replace(/<span class="barcode"[^>]*>(.*?)<\/span>/gi, '<barcode>$1</barcode>');
+                
+                // Replace heading spans with actual heading tags
+                processedHtml = processedHtml.replace(/<span class="heading1"[^>]*>(.*?)<\/span>/gi, '<h1>$1</h1>');
+                processedHtml = processedHtml.replace(/<span class="heading2"[^>]*>(.*?)<\/span>/gi, '<h2>$1</h2>');
+                processedHtml = processedHtml.replace(/<span class="heading3"[^>]*>(.*?)<\/span>/gi, '<h3>$1</h3>');
+                processedHtml = processedHtml.replace(/<span class="heading4"[^>]*>(.*?)<\/span>/gi, '<h4>$1</h4>');
+                processedHtml = processedHtml.replace(/<span class="heading5"[^>]*>(.*?)<\/span>/gi, '<h5>$1</h5>');
+                processedHtml = processedHtml.replace(/<span class="heading6"[^>]*>(.*?)<\/span>/gi, '<h6>$1</h6>');
+                
+                // Process centered content
+                processedHtml = processedHtml.replace(/<div class="centered">(.*?)<\/div>/gi, '<div style="text-align: center;">$1</div>');
+                
+                // Final cleanup pass to catch any newly created empty tags
+                processedHtml = cleanupEmptyTags(processedHtml);
+                
+                return processedHtml;
+            }
+        });
+    </script>
+</body>
+</html>
