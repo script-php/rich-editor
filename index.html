@@ -235,7 +235,7 @@
                 removeFormat: document.getElementById('btn-remove-format'),
                 submit: document.getElementById('btn-submit')
             };
-            
+
             // Function to update the preview
             function updateLivePreview() {
                 let html = editor.innerHTML;
@@ -250,6 +250,42 @@
             editor.addEventListener('blur', updateLivePreview);
             editor.addEventListener('keyup', updateLivePreview);
             editor.addEventListener('mouseup', updateLivePreview);
+
+            // ** CRITICAL FIX ** 
+            // Prevent the mousedown event on toolbar buttons to maintain selection
+            const toolbarButtons = document.querySelectorAll('.toolbar div');
+            toolbarButtons.forEach(button => {
+                button.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                });
+            });
+
+            // Store last valid selection
+            let lastSelection = null;
+            
+            // Save selection when it changes
+            editor.addEventListener('mouseup', function() {
+                saveCurrentSelection();
+            });
+            
+            editor.addEventListener('keyup', function() {
+                saveCurrentSelection();
+            });
+
+            function saveCurrentSelection() {
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0 && selection.toString().length > 0) {
+                    lastSelection = {
+                        range: selection.getRangeAt(0).cloneRange(),
+                        text: selection.toString()
+                    };
+                }
+            }
+            
+            function hasValidSelection() {
+                const selection = window.getSelection();
+                return selection && selection.toString().length > 0;
+            }
             
             // Load preformatted content
             loadButton.addEventListener('click', () => {
@@ -260,10 +296,10 @@
                 // Update preview immediately after loading
                 updateLivePreview();
             });
-            
-            // Basic formatting commands
+
+            // Basic formatting commands with selection check
             buttons.bold.addEventListener('click', () => {
-                if (hasSelection()) {
+                if (hasValidSelection()) {
                     document.execCommand('bold');
                     updateLivePreview();
                 } else {
@@ -272,7 +308,7 @@
             });
             
             buttons.italic.addEventListener('click', () => {
-                if (hasSelection()) {
+                if (hasValidSelection()) {
                     document.execCommand('italic');
                     updateLivePreview();
                 } else {
@@ -281,7 +317,7 @@
             });
             
             buttons.underline.addEventListener('click', () => {
-                if (hasSelection()) {
+                if (hasValidSelection()) {
                     document.execCommand('underline');
                     updateLivePreview();
                 } else {
@@ -290,7 +326,7 @@
             });
             
             buttons.center.addEventListener('click', () => {
-                if (hasSelection()) {
+                if (hasValidSelection()) {
                     // Custom center handling to prevent nesting issues
                     applyCenterToSelection();
                     updateLivePreview();
@@ -301,7 +337,7 @@
             
             // Heading formatting using spans instead of block-level elements
             buttons.h1.addEventListener('click', () => {
-                if (hasSelection()) {
+                if (hasValidSelection()) {
                     applyHeadingToSelection('heading1');
                     updateLivePreview();
                 } else {
@@ -310,7 +346,7 @@
             });
             
             buttons.h2.addEventListener('click', () => {
-                if (hasSelection()) {
+                if (hasValidSelection()) {
                     applyHeadingToSelection('heading2');
                     updateLivePreview();
                 } else {
@@ -319,7 +355,7 @@
             });
             
             buttons.h3.addEventListener('click', () => {
-                if (hasSelection()) {
+                if (hasValidSelection()) {
                     applyHeadingToSelection('heading3');
                     updateLivePreview();
                 } else {
@@ -328,16 +364,16 @@
             });
             
             buttons.h4.addEventListener('click', () => {
-                if (hasSelection()) {
+                if (hasValidSelection()) {
                     applyHeadingToSelection('heading4');
                     updateLivePreview();
                 } else {
                     alert('Please select some text first');
                 }
             });
-            
+
             buttons.h5.addEventListener('click', () => {
-                if (hasSelection()) {
+                if (hasValidSelection()) {
                     applyHeadingToSelection('heading5');
                     updateLivePreview();
                 } else {
@@ -346,7 +382,7 @@
             });
             
             buttons.h6.addEventListener('click', () => {
-                if (hasSelection()) {
+                if (hasValidSelection()) {
                     applyHeadingToSelection('heading6');
                     updateLivePreview();
                 } else {
@@ -356,7 +392,7 @@
             
             // Barcode formatting
             buttons.barcode.addEventListener('click', () => {
-                if (hasSelection()) {
+                if (hasValidSelection()) {
                     toggleBarcode();
                     updateLivePreview();
                 } else {
@@ -366,7 +402,7 @@
             
             // Remove format
             buttons.removeFormat.addEventListener('click', () => {
-                if (hasSelection()) {
+                if (hasValidSelection()) {
                     removeCustomFormatting();
                     document.execCommand('removeFormat');
                     updateLivePreview();
@@ -386,25 +422,19 @@
                 console.log(html); // You can send this to your file
             });
             
-            // Helper functions
-            function hasSelection() {
-                const selection = window.getSelection();
-                return selection && selection.toString().length > 0;
-            }
-            
             function cleanupEmptyTags(html) {
                 // Remove empty tags with no attributes
                 let cleaned = html;
                 
                 // Remove specific empty tags that might be left after formatting
-                const emptyTagsPattern = /<(b|i|u|strong|em|span|div|h1|h2|h3|h4|h5|h6)>\s*<\/\1>/gi;
+                const emptyTagsPattern = /<(b|i|u|strong|em|span|div|center|h1|h2|h3|h4|h5|h6)>\s*<\/\1>/gi;
                 
                 // First pass - do a direct replacement of simple empty tags
                 cleaned = cleaned.replace(emptyTagsPattern, '');
                 
                 // Second pass - handle empty tags with attributes (more complex)
                 // This regex matches tags with attributes but no content
-                const emptyTagsWithAttrsPattern = /<(b|i|u|strong|em|span|div)([^>]*)>\s*<\/\1>/gi;
+                const emptyTagsWithAttrsPattern = /<(b|i|u|strong|em|span|div|center)([^>]*)>\s*<\/\1>/gi;
                 cleaned = cleaned.replace(emptyTagsWithAttrsPattern, function(match, tagName, attributes) {
                     // If attributes contain class="centered" or similar important attributes, 
                     // we may want to keep these tags in certain cases
@@ -691,7 +721,8 @@
                 processedHtml = processedHtml.replace(/<span class="heading6"[^>]*>(.*?)<\/span>/gi, '<h6>$1</h6>');
                 
                 // Process centered content
-                processedHtml = processedHtml.replace(/<div class="centered">(.*?)<\/div>/gi, '<div style="text-align: center;">$1</div>');
+                processedHtml = processedHtml.replace(/<div class="centered">(.*?)<\/div>/gi, '<center>$1</center>');
+                // processedHtml = processedHtml.replace(/<div class="centered">(.*?)<\/div>/gi, '<div style="text-align: center;">$1</div>');
                 
                 // Final cleanup pass to catch any newly created empty tags
                 processedHtml = cleanupEmptyTags(processedHtml);
